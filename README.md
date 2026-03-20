@@ -37,8 +37,8 @@
 **Test**
 
 	1. Menu displays without problem. (Done)
-	2. Option 1
-	3. Option 2
-	4. Option 3
+	2. Option 1 (Done)
+	3. Option 2 (Done)
+	4. Option 3 (Done)
 	5. Option 4
 	6. Final System test
