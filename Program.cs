@@ -1,337 +1,256 @@
-﻿using System.Collections;
-using System.Runtime.CompilerServices;
+﻿using Project_MoneyTrackingApplication.Application.Interfaces;
+using Project_MoneyTrackingApplication.Application.Services;
+using Project_MoneyTrackingApplication.Domain.Entities;
+using Project_MoneyTrackingApplication.Infrastructure.Interface;
+using Project_MoneyTrackingApplication.Infrastructure.Use_Cases;
 
-TransList transList = new TransList();
-bool userQuit = false;
-
-printMenu();
-
-while (!userQuit)
+class Program
 {
-    string userInput = Console.ReadLine().Trim().ToLower() ?? "None";
-
-    if (byte.TryParse(userInput, out byte userChoice))
+    static void Main()
     {
-        switch (userChoice)
+        IItemRepository repository = new ItemRepository();
+        IItemService service = new ItemService(repository);
+        ConsoleUI ui = new ConsoleUI(service);
+
+        ui.Run();
+    }
+}
+
+public class ConsoleUI
+{
+    private readonly IItemService _service;
+
+    public ConsoleUI(IItemService service)
+    {
+        _service = service;
+    }
+
+    public void Run()
+    {
+        while (true)
         {
-            case 1:
-                Console.WriteLine("Choose transaction list -- 1: All, 2: Expense(s), 3: Income(s)");
-                byte categoryChoice = 0;
-                userInput = Console.ReadLine().Trim().ToLower() ?? "None";
-                if (byte.TryParse(userInput, out categoryChoice))
-                {
-                    switch (categoryChoice)
-                    {
-                        case 1: categoryChoice = 1; break;
-                        case 2: categoryChoice = 2; break;
-                        case 3: categoryChoice = 3; break;
-                        default: 
-                            Console.WriteLine("Invalid input of category. Defaulting to All. "); 
-                            categoryChoice = 1; 
-                            break;
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("Invalid input of category. Defaulting to All. ");
-                    categoryChoice = 1;
-                }
+            PrintMenu();
+            string choice = Console.ReadLine();
 
-                Console.WriteLine("Display list order by -- 1: Month, 2: Amount, 3: Title");
-                byte orderByChoice = 0;
-                userInput = Console.ReadLine().Trim().ToLower() ?? "None";
-                if (byte.TryParse(userInput, out orderByChoice))
+            try
+            {
+                switch (choice)
                 {
-                    switch (orderByChoice)
-                    {
-                        case 1: orderByChoice = 1; break;
-                        case 2: orderByChoice = 2; break;
-                        case 3: orderByChoice = 3; break;
-                        default:
-                            Console.WriteLine("Invalid input of order by. Defaulting to Month. ");
-                            orderByChoice = 1;
-                            break;
-                    }
+                    case "1":
+                        ShowItemsMenu();
+                        break;
+                    case "2":
+                        AddItem();
+                        break;
+                    case "3":
+                        EditRemoveItemMenu();
+                        break;
+                    case "4":
+                        _service.Save();
+                        return;
+                    default:
+                        Console.WriteLine("Invalid choice!");
+                        Pause();
+                        break;
                 }
-                else
-                {
-                    Console.WriteLine("Invalid input of order by. Defaulting to Month. ");
-                    orderByChoice = 1;
-                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
+                Pause();
+            }
+        }
+    }
 
-                Console.WriteLine("Display list order -- 1: Ascending 2: Descending");
-                byte orderChoice = 0;
-                bool orderDescending = false;
-                userInput = Console.ReadLine().Trim().ToLower() ?? "None";
-                if (byte.TryParse(userInput, out orderChoice))
-                {
-                    switch (orderChoice)
-                    {
-                        case 1: orderDescending = false; break;
-                        case 2: orderDescending = true; break;
-                        default:
-                            Console.WriteLine("Invalid input of order. Defaulting to Ascending. ");
-                            orderDescending = false;
-                            break;
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("Invalid input of order. Defaulting to Ascending. ");
-                    orderDescending = false;
-                }
+    private void PrintMenu()
+    {
+        Console.Clear();
+        Console.WriteLine("Welcome to TrackMoney");
 
-                transList.Display(categoryChoice, orderByChoice, orderDescending);
-                Console.WriteLine("Press enter to return to menu...");
-                Console.ReadLine();
-                printMenu();
+        decimal totalMoney = CalculateTotalMoney();
+        Console.WriteLine($"You have currently {totalMoney:C} on your account.\n");
+
+        Console.WriteLine("Pick an option:");
+        Console.WriteLine("(1) Show Items (All/Expense(s)/Income(s))");
+        Console.WriteLine("(2) Add New Expense/Income");
+        Console.WriteLine("(3) Edit Item (Edit, Remove)");
+        Console.WriteLine("(4) Save and Quit");
+    }
+
+    private decimal CalculateTotalMoney()
+    {
+        decimal total = 0;
+        foreach (var item in _service.GetAllItems())
+        {
+            total += item.Type == "income" ? item.Amount : -item.Amount;
+        }
+        return total;
+    }
+
+    private void ShowItemsMenu()
+    {
+        Console.WriteLine("\nShow Items:");
+        Console.WriteLine("(1) All items");
+        Console.WriteLine("(2) Only Expenses");
+        Console.WriteLine("(3) Only Incomes");
+        Console.Write("Choose an option: ");
+        string choice = Console.ReadLine();
+
+        System.Collections.Generic.List<Item> items = choice switch
+        {
+            "1" => _service.GetAllItems(),
+            "2" => _service.FilterByType("expense"),
+            "3" => _service.FilterByType("income"),
+            _ => null
+        };
+
+        if (items == null)
+        {
+            Console.WriteLine("Invalid choice!");
+            Pause();
+            return;
+        }
+
+        // Sorting submenu
+        Console.WriteLine("\nSort items by:");
+        Console.WriteLine("(1) Title");
+        Console.WriteLine("(2) Amount");
+        Console.WriteLine("(3) Month");
+        Console.WriteLine("(4) No sorting");
+        Console.Write("Choose an option: ");
+        string sortChoice = Console.ReadLine();
+
+        bool ascending = true;
+        if (sortChoice != "4")
+        {
+            Console.Write("Ascending or Descending? (A/D): ");
+            string order = Console.ReadLine();
+            ascending = order.ToUpper() == "A";
+        }
+
+        items = sortChoice switch
+        {
+            "1" => _service.SortItems("title", ascending),
+            "2" => _service.SortItems("amount", ascending),
+            "3" => _service.SortItems("month", ascending),
+            _ => items
+        };
+
+        DisplayItems(items);
+        Pause();
+    }
+
+    private void AddItem()
+    {
+        string title = Prompt("Title");
+        decimal amount = decimal.Parse(Prompt("Amount"));
+        string month = Prompt("Month");
+        string type = Prompt("Type (income/expense)");
+        _service.AddItem(title, amount, month, type);
+        Console.WriteLine("Item added successfully!");
+        Pause();
+    }
+
+    private void EditRemoveItemMenu()
+    {
+        DisplayItems(_service.GetAllItems());
+        Console.WriteLine("\nChoose an action:");
+        Console.WriteLine("(1) Edit an item");
+        Console.WriteLine("(2) Remove an item");
+        string choice = Console.ReadLine();
+
+        switch (choice)
+        {
+            case "1":
+                EditItem();
                 break;
-            case 2:
-                transList.AddItem();
-                printMenu();
+            case "2":
+                RemoveItem();
                 break;
-
-            case 3:
-                transList.EditItem();
-                printMenu();
-                break;
-
-            case 4:
-                userQuit = true;
-                break;
-
             default:
-                Console.WriteLine("Invalid input");
+                Console.WriteLine("Invalid choice!");
                 break;
         }
 
-    }
-    else Console.WriteLine("Invalid input");
-}
-
-
-//Functions
-void printMenu()
-{
-    Console.Clear();
-    Console.WriteLine("Welcome to TrackMoney");
-    Console.WriteLine($"You have currently {transList.totalMoney} Kr on your account.");
-    Console.WriteLine("Pick an option:");
-
-    Console.WriteLine("(1) Show Items (All/Expense(s)/income(s))");
-    Console.WriteLine("(2) Add New Expense/Income)");
-    Console.WriteLine("(3) Edit Item (Edit, Remove)");
-    Console.WriteLine("(4) Save and Quit");
-}
-
-
-//Classes
-public class TransList
-{
-    //Variables
-    public decimal totalMoney = 0.00m;
-    private List<Transaction> userList = new List<Transaction>();
-    
-    //Initial
-    public TransList()
-    {
+        Pause();
     }
 
-    //Methods
-    public void AddItem()
+    private void EditItem()
     {
-        while (true)
-        {
-            ColoredString("To enter a new transaction - follow the steps | To quit - enter: \"Q\" ", ConsoleColor.Blue);
+        int index = int.Parse(Prompt("Enter item number to edit")) - 1;
+        string title = Prompt("New title (leave blank to keep)");
+        string amt = Prompt("New amount (leave blank to keep)");
+        decimal? amount = string.IsNullOrEmpty(amt) ? null : decimal.Parse(amt);
+        string month = Prompt("New month (leave blank to keep)");
+        string type = Prompt("New type (income/expense, leave blank to keep)");
 
-            ColoredString("To enter a Title: ", ConsoleColor.Yellow);
-
-            string inputTitle = Console.ReadLine() ?? "Unknown";
-
-            if (inputTitle.Trim().ToLower() == "q") break;
-
-            ColoredString("To enter an Amount: ", ConsoleColor.Yellow);
-            string? inputAmount = Console.ReadLine();
-
-            ColoredString("Enter a Month: ", ConsoleColor.Yellow);
-            string? inputMonth = Console.ReadLine();
-
-            //Error handling of the price
-            if (decimal.TryParse(inputAmount, out decimal roundAmount))
-            {
-                if (byte.TryParse(inputMonth, out byte transMonth))
-                {
-                    if (transMonth >= 1 && transMonth <= 12)
-                    {
-                        roundAmount = Math.Round(roundAmount, 2); //Round to 2 decimals
-                        Transaction newTrans = new Transaction(inputTitle, roundAmount, transMonth);
-                        userList.Add(newTrans);
-                    }
-                    else Console.WriteLine("Invalid month. Please enter a value between 1 and 12.");
-                }
-                else Console.WriteLine("Invalid input of Month. Please try again. ");
-            }
-            else Console.WriteLine("Invalid input of Amount. Please try again. ");
-        }
-
-        CalculateTotal();
+        _service.EditItem(index, title, amount, month, type);
+        Console.WriteLine("Item updated successfully!");
     }
 
-    public void Display(byte category = 1, byte orderBy = 1, bool orderDescending = false, bool showIndex = false)
+    private void RemoveItem()
     {
-
-        //Category - 1: All, 2: Expense(s), 3: Income(s)
-        var sortedList = userList;
-        if (category == 2) sortedList = userList.Where(t => t.amount < 0).ToList();
-        else if (category == 3) sortedList = userList.Where(t => t.amount >= 0).ToList();
-        
-
-        //Order - true: Ascending, false: Descending
-        //OrderBy - 1: Month, 2: Amount, 3: Title
-        if (orderDescending == false)
-        {
-            if (orderBy == 1) sortedList = sortedList.OrderBy(t => t.month).ToList();
-            else if (orderBy == 2) sortedList = sortedList.OrderBy(t => t.amount).ToList();
-            else if (orderBy == 3) sortedList = sortedList.OrderBy(t => t.title).ToList();
-            else Console.WriteLine("Invalid input of OrderBy. ");
-        }
-        else 
-        {
-            if (orderBy == 1) sortedList = sortedList.OrderByDescending(t => t.month).ToList();
-            else if (orderBy == 2) sortedList = sortedList.OrderByDescending(t => t.amount).ToList();
-            else if (orderBy == 3) sortedList = sortedList.OrderByDescending(t => t.title).ToList();
-            else Console.WriteLine("Invalid input of OrderBy. ");
-        }
-
-        //Print list
-        Console.WriteLine(new string('-', 20 * 3));
-
-        if (showIndex == false)
-        {
-            ColoredString("Title".PadRight(20) + "Amount".PadRight(20) + "Month".PadRight(20), ConsoleColor.Green);
-            sortedList.ForEach(t => Console.WriteLine(t.title.PadRight(20) + t.amount.ToString().PadRight(20) + t.month.ToString().PadRight(20)));
-        }
-        else
-        {
-            int count = 1;
-
-            ColoredString("Index".PadRight(10) + "Title".PadRight(20) + "Amount".PadRight(20) + "Month".PadRight(20), ConsoleColor.Green);
-
-            foreach (var t in sortedList)
-            {
-                Console.WriteLine(count.ToString().PadRight(10) + t.title.PadRight(20) + t.amount.ToString().PadRight(20) + t.month.ToString().PadRight(20));
-                count++;
-            }
-        }
-        Console.WriteLine(new string('-', 20 * 3));
+        int index = int.Parse(Prompt("Enter item number to remove")) - 1;
+        _service.RemoveItem(index);
+        Console.WriteLine("Item removed successfully!");
     }
 
-
-    public void EditItem()
+    private void DisplayItems(System.Collections.Generic.List<Item> items)
     {
-        while (true)
+        if (items.Count == 0)
         {
-            //Default display, but with index
-            Display(1, 1, false, true);
-
-            var sortedList = userList.OrderBy(t => t.month).ToList();
-
-            Console.WriteLine("Edit or remove item in the list-- 1: Edit, 2: Remove, 3: Return to menu");
-            string userInput = Console.ReadLine().Trim().ToLower() ?? "None";
-
-            if (int.TryParse(userInput, out int userChoice))
-            {
-                if (userChoice == 1)
-                {
-                    ColoredString("Edit - Enter item Index: ", ConsoleColor.Yellow);
-                    userInput = Console.ReadLine().Trim().ToLower() ?? "None";
-                    if (int.TryParse(userInput, out userChoice))
-                    {
-                        if (userChoice - 1 < sortedList.Count)
-                        {
-                            Transaction t = sortedList[userChoice - 1];
-                            Console.WriteLine(userInput.ToString().PadRight(10) + t.title.PadRight(20) + t.amount.ToString().PadRight(20) + t.month.ToString().PadRight(20));
-
-                            ColoredString("To enter a Title: ", ConsoleColor.Yellow);
-                            string inputTitle = Console.ReadLine() ?? "Unknown";
-
-                            ColoredString("To enter an Amount: ", ConsoleColor.Yellow);
-                            string? inputAmount = Console.ReadLine();
-
-                            ColoredString("Enter a Month: ", ConsoleColor.Yellow);
-                            string? inputMonth = Console.ReadLine();
-
-                            //Error handling of the price
-                            if (decimal.TryParse(inputAmount, out decimal roundAmount))
-                            {
-                                if (byte.TryParse(inputMonth, out byte transMonth))
-                                {
-                                    if (transMonth >= 1 && transMonth <= 12)
-                                    {
-                                        roundAmount = Math.Round(roundAmount, 2); //Round to 2 decimals
-                                        sortedList[userChoice - 1] = new Transaction(inputTitle, roundAmount, transMonth);
-                                        userList = sortedList; //Update userList after removing
-                                        CalculateTotal(); //Recalculate total after edit
-                                    }
-                                    else Console.WriteLine("Invalid month. Please enter a value between 1 and 12.");
-                                }
-                                else Console.WriteLine("Invalid input of Month. Please try again. ");
-                            }
-                            else Console.WriteLine("Invalid input of Amount. Please try again. ");
-                        }
-                        else ColoredString("Invalid index. Please try again. ", ConsoleColor.Red);
-                    }
-                    else ColoredString("Invalid index. Please try again. ", ConsoleColor.Red);
-                }
-                else if (userChoice == 2)
-                {
-                    ColoredString("Remove - Enter item Index: ", ConsoleColor.Yellow);
-                    userInput = Console.ReadLine().Trim().ToLower() ?? "None";
-                    if (int.TryParse(userInput, out userChoice))
-                    {
-                        if (userChoice - 1 < sortedList.Count)
-                        {
-                            sortedList.RemoveAt(userChoice - 1);
-                            userList = sortedList; //Update userList after removing
-                            CalculateTotal(); //Recalculate total after edit
-                        }
-                        else ColoredString("Invalid index. Please try again. ", ConsoleColor.Red);
-                    }
-                    else ColoredString("Invalid index. Please try again. ", ConsoleColor.Red);
-                }
-                else if (userChoice == 3) break;
-                else ColoredString("Invalid input. Please try again. ", ConsoleColor.Red);
-            }
+            Console.WriteLine("No items found.");
+            return;
         }
-    }
 
-    private void ColoredString(string text, ConsoleColor consoleColor)
-    {
-        Console.ForegroundColor = consoleColor;
-        Console.WriteLine(text);
+        for (int i = 0; i < items.Count; i++)
+        {
+            var item = items[i];
+            if (item.Type == "income")
+                Console.ForegroundColor = ConsoleColor.Green;
+            else if (item.Type == "expense")
+                Console.ForegroundColor = ConsoleColor.Red;
+            else
+                Console.ResetColor();
+
+            Console.WriteLine($"{i + 1}. {item}");
+        }
+
         Console.ResetColor();
+        ShowNetBalance(items);
     }
 
-    //Calculate total amount
-    private void CalculateTotal()
+    private void ShowNetBalance(System.Collections.Generic.List<Item> items)
     {
-        totalMoney = userList.Sum(t => t.amount);
+        decimal totalIncome = 0;
+        decimal totalExpenses = 0;
+
+        foreach (var item in items)
+        {
+            if (item.Type == "income") totalIncome += item.Amount;
+            else if (item.Type == "expense") totalExpenses += item.Amount;
+        }
+
+        decimal net = totalIncome - totalExpenses;
+
+        Console.WriteLine("\nSummary:");
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine($"Total Income: {totalIncome:C}");
+        Console.ForegroundColor = ConsoleColor.Red;
+        Console.WriteLine($"Total Expenses: {totalExpenses:C}");
+        Console.ResetColor();
+        Console.WriteLine($"Net Balance: {net:C}");
     }
 
-}
-
-public class Transaction
-{
-    //Variables
-    public string title { get; set; }
-    public decimal amount { get; set; }
-    public byte month { get; set; }
-
-    //Initial
-    public Transaction(string title, decimal amount, byte month)
+    private string Prompt(string message)
     {
-        this.title = title;
-        this.amount = amount;
-        this.month = month;
+        Console.Write($"{message}: ");
+        return Console.ReadLine();
+    }
+
+    private void Pause()
+    {
+        Console.WriteLine("\nPress any key to continue...");
+        Console.ReadKey();
     }
 }

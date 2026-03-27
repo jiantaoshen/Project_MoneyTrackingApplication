@@ -1,44 +1,74 @@
-# Project_MoneyTrackingApplication
-## Summary
+# TrackMoney – Console Money Tracking Application
+## Overview
 
-**Goal:** Build a money tracking application
+TrackMoney is a simple console-based money tracking application built in C#. It allows users to manage their personal finances by recording income and expenses, tracking them by month, and saving data for future use.
 
-**Requirements:**
+The application uses a layered architecture with SOLID and DRY principles to ensure maintainability and clarity.
 
-	• Model an item with title, amount, and month. (Solve the problem where you have to distinguish income and expense) 
-	• Display a collection of items that can be sorted in ascending or descending order. Sorted by month, amount or title
-	• Display only expenses or only incomes
-	• Support the ability to edit, and remove items 
-	• Support a text-based user interface 
-	• Load and save items list to file
-	
-**UI:**
+## Features
+Add income or expense items with title, amount, and month
+Edit or remove existing items
+Display items: all, only incomes, or only expenses
+Sort items by title, amount, or month (ascending/descending)
+Color-coded display:
+Green for incomes
+Red for expenses
+Show net balance and summary of total income/expenses
+Persist data to data.json in the Infrastructure folder
+Load saved data on program start
 
-![UI](UI.png)
+## Project Structure
+TrackMoney/
+│
+├─ Domain/
+│   └─ Item.cs             # Represents a financial item (income/expense)
+│
+├─ Infrastructure/
+│   ├─ ItemRepository.cs   # Handles file storage (data.json)
+│
+├─ Application/
+│   └─ ItemService.cs      # Business logic (add/edit/remove/filter/sort)
+│
+└─ Program.cs              # Entry point and user interface
 
-## System Design
+data.json is automatically created inside the bin file when you debug the program with Visual Studio.
 
-**Requirements:**
+## Usage
+Open the project in Visual Studio or your preferred C# IDE
+Build the solution
+Run the application
 
-	• Because this is a bank system, so all variables that relate to money must be decimal.
-	• Each item has a unique ID in the system. The ID is a byte variable because this project is not going to create more than 100 items.
-	• Clean the screen every time the user returns to the menu.
-	• The system loads the save file when it opens, if the file exists.
-	
-**System Design:**
+## Example Menu Interaction:
 
-	1. A variable that tracks and displays current amount of the money in the account. 
-	2. A list for menu.
-	3. In option 1, there are 3 options, all, expense and income, you could choose. The default order of list of all options sorts by month and in descending order. After the system displays the list, the user could choose sort by month, amount or title and sort in ascending or descending order. The user also could choose return to the menu. 
-	4. In the picture of UI, withdrawal/deposit functions are in the same option “Add New Expense/Income”. According to Chatgpt, it’s generally better to keep expense and income as separate functions in banking system. This improves security, clarity, and control. Therefore, there are 3 options, Expense, Income and return to menu, in the option 2. The user input starts from title, then amount, and last month. The value of the amount is limit to 2 decimals and the month displays a 2 digits numbers from 01 to 12. 
-	5. In option 3, the system displays the list with unique ID. After that, the user could choose edit item, remove item and return to menu. To edit or remove item, the user input the ID of the item. In edit option, the user could choose edit month, amount, title or all. 
-	6. In option 4, save date in a file and end the program. If there isn’t a file, then the program creates it automatically. 
-	
-**Test**
+Welcome to TrackMoney
+You have currently 0.00 on your account.
 
-	1. Menu displays without problem. (Done)
-	2. Option 1 (Done)
-	3. Option 2 (Done)
-	4. Option 3 (Done)
-	5. Option 4
-	6. Final System test
+Pick an option:
+(1) Show Items (All/Expense(s)/Income(s))
+(2) Add New Expense/Income
+(3) Edit Item (Edit, Remove)
+(4) Save and Quit
+Adding a New Item
+Select option (2)
+Enter:
+Title: e.g., Salary
+Amount: e.g., 5000
+Month: e.g., March
+Type: income or expense
+Editing/Removing an Item
+Select option (3)
+Choose to edit or remove
+Follow prompts to update fields or delete the item
+Saving and Quitting
+Select option (4)
+All changes are saved to Infrastructure/data.json
+Notes
+Amount must always be positive; type determines if it’s added or subtracted from balance
+The application is single-user and works entirely on local files
+Sorting and filtering help organize your items quickly
+
+## Future Enhancements
+Error handling for invalid inputs
+Month validation (e.g., only allow valid month names) OR use a numeric month representation
+Income is only valid if the amount is positive, and expense is only valid if the amount is negative. This can be enforced in the UI when adding/editing items.
+Security improvements (e.g., encrypting data.json)
