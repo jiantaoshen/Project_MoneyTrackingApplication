@@ -3,8 +3,6 @@ using Project_MoneyTrackingApplication.Application.Services;
 using Project_MoneyTrackingApplication.Domain.Entities;
 using Project_MoneyTrackingApplication.Infrastructure.Interface;
 using Project_MoneyTrackingApplication.Infrastructure.Use_Cases;
-using static System.Net.Mime.MediaTypeNames;
-using static System.Net.WebRequestMethods;
 
 class Program
 {
@@ -38,12 +36,15 @@ public class ConsoleUI
             {
                 case "1":
                     ShowItemsMenu();
+                    Pause();
                     break;
                 case "2":
                     AddItem();
+                    Pause();
                     break;
                 case "3":
                     EditRemoveItemMenu();
+                    Pause();
                     break;
                 case "4":
                     _service.Save();
@@ -123,41 +124,76 @@ public class ConsoleUI
 
         Console.WriteLine("\n");
         DisplayItems(items);
-        Pause();
     }
 
     private void AddItem()
     {
-        string title = Prompt("Title") ?? "Unknown";
-        string amount = Prompt("Amount");
-        decimal amountValue = 0.0m;
+        string title = string.IsNullOrWhiteSpace(Prompt("Title")) ? "Unknown" : Prompt("Title");
 
-        if (amount != null && amount != "") decimal.TryParse(amount, out amountValue);
+        string inputAmount = Prompt("Amount");
+        decimal amount = 0;
 
-        string month = Prompt("Month");
-        byte inputMonth = 0;
-
-        if (month != null && amount != "") byte.TryParse(month, out inputMonth);
-        
-        string type = string.Empty;
-        if (amountValue > 0)
+        if (inputAmount != "")
         {
-            type = "income";
-        }
-        else if (amountValue < 0)
-        {
-            type = "expense";
+            if (decimal.TryParse(inputAmount, out amount))
+            {
+                if (amount == 0)
+                {
+                    Console.WriteLine("Amount cannot be zero.");
+                    return;
+                }
+            }
+            else
+            {
+                Console.WriteLine("Invalid amount.");
+                return;
+            }
         }
         else
         {
-            Console.WriteLine("Amount cannot be zero. Please enter a valid amount.");
-            Pause();
+            Console.WriteLine("Amount cannot be empty.");
             return;
         }
 
-        _service.AddItem(title, amountValue, inputMonth);
+        string type = string.Empty;
+        if (amount > 0)
+        {
+            type = "income";
+        }
+        else if (amount < 0)
+        {
+            type = "expense";
+        }
+
+        string inputMonth = Prompt("Month");
+        byte month = 0;
+
+        if (inputMonth != "")
+        {
+            if (byte.TryParse(inputMonth, out month))
+            {
+                if (month < 0 || month > 12)
+                {
+                    Console.WriteLine("Month must be between 1 and 12.");
+                    return;
+                }
+            }
+            else
+            {
+                Console.WriteLine("Invalid month.");
+                return;
+            }
+        }
+        else
+        {
+            Console.WriteLine("Month cannot be empty.");
+            return;
+        }
+
+
+
+        _service.AddItem(title, amount, month);
         Console.WriteLine("Item added successfully!");
-        Pause();
     }
 
     private void EditRemoveItemMenu()
@@ -180,8 +216,6 @@ public class ConsoleUI
                 Console.WriteLine("Invalid choice!");
                 break;
         }
-
-        Pause();
     }
 
     private void EditItem()
