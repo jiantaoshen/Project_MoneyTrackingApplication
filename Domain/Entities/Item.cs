@@ -5,10 +5,10 @@
     {
         public string Title { get; set; }
         public decimal Amount { get; set; }
-        public string Month { get; set; }
+        public byte Month { get; set; }
         public string Type { get; set; } // "income" or "expense"
 
-        public Item(string title, decimal amount, string month, string type)
+        public Item(string title, decimal amount, byte month, string type)
         {
             Title = title;
             Amount = amount;
@@ -16,6 +16,6 @@
             Type = type.ToLower();
         }
 
-        public override string ToString() => $"{Title} | {Amount:C} | {Month} | {Type}";
+        public override string ToString() => $"{Title} | {Amount:C} | {Month}";
     }
 }

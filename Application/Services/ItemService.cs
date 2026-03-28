@@ -14,12 +14,18 @@ namespace Project_MoneyTrackingApplication.Application.Services
             _repository.Load();
         }
 
-        public void AddItem(string title, decimal amount, string month, string type)
+        public void AddItem(string title, decimal amount, byte month)
         {
+            string type;
+
+            if (amount > 0) type = "income";
+            else if (amount < 0) type = "expense";
+            else throw new Exception("Amount cannot be zero.");
+
             _repository.Add(new Item(title, amount, month, type));
         }
 
-        public void EditItem(int index, string title, decimal? amount, string month, string type)
+        public void EditItem(int index, string title, decimal? amount, byte? month)
         {
             var items = _repository.GetAll();
             if (index < 0 || index >= items.Count) throw new IndexOutOfRangeException();
@@ -27,8 +33,10 @@ namespace Project_MoneyTrackingApplication.Application.Services
             var item = items[index];
             if (!string.IsNullOrEmpty(title)) item.Title = title;
             if (amount.HasValue) item.Amount = amount.Value;
-            if (!string.IsNullOrEmpty(month)) item.Month = month;
-            if (!string.IsNullOrEmpty(type)) item.Type = type.ToLower();
+            if (month.HasValue) item.Month = month.Value;
+          
+            if (amount > 0) item.Type = "income";
+            else if (amount < 0) item.Type = "expense";
         }
 
         public void RemoveItem(int index)
@@ -43,15 +51,14 @@ namespace Project_MoneyTrackingApplication.Application.Services
         public List<Item> FilterByType(string type) =>
             _repository.GetAll().Where(i => i.Type == type.ToLower()).ToList();
 
-        public List<Item> SortItems(string sortBy, bool ascending)
+        public List<Item> SortItems(string sortBy, bool ascending, List<Item>? items = null)
         {
-            var items = _repository.GetAll();
             return sortBy.ToLower() switch
             {
                 "title" => ascending ? items.OrderBy(i => i.Title).ToList() : items.OrderByDescending(i => i.Title).ToList(),
                 "amount" => ascending ? items.OrderBy(i => i.Amount).ToList() : items.OrderByDescending(i => i.Amount).ToList(),
                 "month" => ascending ? items.OrderBy(i => i.Month).ToList() : items.OrderByDescending(i => i.Month).ToList(),
-                _ => items
+                _ => items.ToList()
             };
         }
 

@@ -32,32 +32,24 @@ public class ConsoleUI
             PrintMenu();
             string choice = Console.ReadLine();
 
-            try
+            switch (choice)
             {
-                switch (choice)
-                {
-                    case "1":
-                        ShowItemsMenu();
-                        break;
-                    case "2":
-                        AddItem();
-                        break;
-                    case "3":
-                        EditRemoveItemMenu();
-                        break;
-                    case "4":
-                        _service.Save();
-                        return;
-                    default:
-                        Console.WriteLine("Invalid choice!");
-                        Pause();
-                        break;
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error: {ex.Message}");
-                Pause();
+                case "1":
+                    ShowItemsMenu();
+                    break;
+                case "2":
+                    AddItem();
+                    break;
+                case "3":
+                    EditRemoveItemMenu();
+                    break;
+                case "4":
+                    _service.Save();
+                    return;
+                default:
+                    Console.WriteLine("Invalid choice!");
+                    Pause();
+                    break;
             }
         }
     }
@@ -80,73 +72,88 @@ public class ConsoleUI
     private decimal CalculateTotalMoney()
     {
         decimal total = 0;
+
         foreach (var item in _service.GetAllItems())
         {
-            total += item.Type == "income" ? item.Amount : -item.Amount;
+            total += item.Amount;
         }
+
         return total;
     }
 
     private void ShowItemsMenu()
     {
         Console.WriteLine("\nShow Items:");
-        Console.WriteLine("(1) All items");
-        Console.WriteLine("(2) Only Expenses");
-        Console.WriteLine("(3) Only Incomes");
+        Console.WriteLine("(1) Only Expenses");
+        Console.WriteLine("(2) Only Incomes");
+        Console.WriteLine("(Default) All items");
         Console.Write("Choose an option: ");
+
         string choice = Console.ReadLine();
 
-        System.Collections.Generic.List<Item> items = choice switch
+        List<Item> items = choice switch
         {
-            "1" => _service.GetAllItems(),
-            "2" => _service.FilterByType("expense"),
-            "3" => _service.FilterByType("income"),
-            _ => null
+            "1" => _service.FilterByType("expense"),
+            "2" => _service.FilterByType("income"),
+            _ => _service.GetAllItems(),
         };
-
-        if (items == null)
-        {
-            Console.WriteLine("Invalid choice!");
-            Pause();
-            return;
-        }
 
         // Sorting submenu
         Console.WriteLine("\nSort items by:");
         Console.WriteLine("(1) Title");
         Console.WriteLine("(2) Amount");
-        Console.WriteLine("(3) Month");
-        Console.WriteLine("(4) No sorting");
+        Console.WriteLine("(Default) Month");
         Console.Write("Choose an option: ");
         string sortChoice = Console.ReadLine();
+        
+        Console.WriteLine("\n(1) Ascending");
+        Console.WriteLine("(Default) Descending");
+        Console.Write("Choose an option: ");
 
-        bool ascending = true;
-        if (sortChoice != "4")
-        {
-            Console.Write("Ascending or Descending? (A/D): ");
-            string order = Console.ReadLine();
-            ascending = order.ToUpper() == "A";
-        }
+        bool ascending = Console.ReadLine().ToUpper() == "A";
 
         items = sortChoice switch
         {
-            "1" => _service.SortItems("title", ascending),
-            "2" => _service.SortItems("amount", ascending),
-            "3" => _service.SortItems("month", ascending),
-            _ => items
+            "1" => _service.SortItems("title", ascending, items),
+            "2" => _service.SortItems("amount", ascending, items),
+            _ => _service.SortItems("month", ascending, items),
         };
 
+        Console.WriteLine("\n");
         DisplayItems(items);
         Pause();
     }
 
     private void AddItem()
     {
-        string title = Prompt("Title");
-        decimal amount = decimal.Parse(Prompt("Amount"));
+        string title = Prompt("Title") ?? "Unknown";
+        string amount = Prompt("Amount");
+        decimal amountValue = 0.0m;
+
+        if (amount != null && amount != "") decimal.TryParse(amount, out amountValue);
+
         string month = Prompt("Month");
-        string type = Prompt("Type (income/expense)");
-        _service.AddItem(title, amount, month, type);
+        byte inputMonth = 0;
+
+        if (month != null && amount != "") byte.TryParse(month, out inputMonth);
+        
+        string type = string.Empty;
+        if (amountValue > 0)
+        {
+            type = "income";
+        }
+        else if (amountValue < 0)
+        {
+            type = "expense";
+        }
+        else
+        {
+            Console.WriteLine("Amount cannot be zero. Please enter a valid amount.");
+            Pause();
+            return;
+        }
+
+        _service.AddItem(title, amountValue, inputMonth);
         Console.WriteLine("Item added successfully!");
         Pause();
     }
@@ -177,25 +184,91 @@ public class ConsoleUI
 
     private void EditItem()
     {
-        int index = int.Parse(Prompt("Enter item number to edit")) - 1;
-        string title = Prompt("New title (leave blank to keep)");
-        string amt = Prompt("New amount (leave blank to keep)");
-        decimal? amount = string.IsNullOrEmpty(amt) ? null : decimal.Parse(amt);
-        string month = Prompt("New month (leave blank to keep)");
-        string type = Prompt("New type (income/expense, leave blank to keep)");
+        int index = -1;
 
-        _service.EditItem(index, title, amount, month, type);
-        Console.WriteLine("Item updated successfully!");
+        if (int.TryParse(Prompt("Enter item number to edit"), out index)) index -= 1;
+        else index = -1;
+
+        if (index < 0 || index >= _service.GetAllItems().Count)
+        {
+            Console.WriteLine("Invalid item number.");
+            return;
+        }
+        else
+        {
+            string title = Prompt("New title (leave blank to keep)");
+            string inputAmount = Prompt("New amount (leave blank to keep)");
+
+            decimal? amount = null;
+
+            if (inputAmount != "")
+            {
+                if (decimal.TryParse(inputAmount, out decimal amountValue))
+                {
+                    amount = amountValue;
+                    if (amount == 0)
+                    {
+                        Console.WriteLine("Amount cannot be zero.");
+                        return;
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Invalid amount.");
+                    return;
+                }
+            }
+            
+            string inputMonth = Prompt("New month (leave blank to keep)");
+            byte? month = null;
+
+            if (inputMonth != "")
+            {
+                if (byte.TryParse(inputMonth, out byte monthValue))
+                {
+                    month = monthValue;
+                    if (month < 0 || month > 12)
+                    {
+                        Console.WriteLine("Month must be between 1 and 12.");
+                        return;
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Invalid month.");
+                    return;
+                }
+            }
+
+            _service.EditItem(index, title, amount, month);
+            Console.WriteLine("Item updated successfully!");
+        }
     }
 
     private void RemoveItem()
     {
-        int index = int.Parse(Prompt("Enter item number to remove")) - 1;
-        _service.RemoveItem(index);
-        Console.WriteLine("Item removed successfully!");
+        string inputIndex = Prompt("Enter item number to remove");
+        int index = -1;
+
+        if (inputIndex != "")
+        {
+            if (int.TryParse(inputIndex, out index)) index = int.Parse(inputIndex) - 1;
+            else index = -1;
+        }
+        
+
+        if(index < 0 || index >= _service.GetAllItems().Count)
+        {
+            Console.WriteLine("Invalid item number.");
+        }
+        else
+        {
+            _service.RemoveItem(index);
+            Console.WriteLine("Item removed successfully!");
+        }
     }
 
-    private void DisplayItems(System.Collections.Generic.List<Item> items)
+    private void DisplayItems(List<Item> items)
     {
         if (items.Count == 0)
         {
@@ -220,7 +293,7 @@ public class ConsoleUI
         ShowNetBalance(items);
     }
 
-    private void ShowNetBalance(System.Collections.Generic.List<Item> items)
+    private void ShowNetBalance(List<Item> items)
     {
         decimal totalIncome = 0;
         decimal totalExpenses = 0;
@@ -231,7 +304,7 @@ public class ConsoleUI
             else if (item.Type == "expense") totalExpenses += item.Amount;
         }
 
-        decimal net = totalIncome - totalExpenses;
+        decimal net = totalIncome + totalExpenses;
 
         Console.WriteLine("\nSummary:");
         Console.ForegroundColor = ConsoleColor.Green;
@@ -239,7 +312,7 @@ public class ConsoleUI
         Console.ForegroundColor = ConsoleColor.Red;
         Console.WriteLine($"Total Expenses: {totalExpenses:C}");
         Console.ResetColor();
-        Console.WriteLine($"Net Balance: {net:C}");
+        Console.WriteLine($"Total: {net:C}");
     }
 
     private string Prompt(string message)
