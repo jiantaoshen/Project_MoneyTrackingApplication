@@ -13,9 +13,9 @@
             Title = title;
             Amount = amount;
             Month = month;
-            Type = type.ToLower();
+            Type = type;
         }
 
-        public override string ToString() => $"{Title} | {Amount:C} | {Month}";
+        public override string ToString() => $"{Title, -15} {Amount, -15:C} {Month, -15}";
     }
 }

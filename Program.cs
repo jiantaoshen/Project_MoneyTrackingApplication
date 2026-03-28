@@ -3,6 +3,8 @@ using Project_MoneyTrackingApplication.Application.Services;
 using Project_MoneyTrackingApplication.Domain.Entities;
 using Project_MoneyTrackingApplication.Infrastructure.Interface;
 using Project_MoneyTrackingApplication.Infrastructure.Use_Cases;
+using static System.Net.Mime.MediaTypeNames;
+using static System.Net.WebRequestMethods;
 
 class Program
 {
@@ -110,7 +112,7 @@ public class ConsoleUI
         Console.WriteLine("(Default) Descending");
         Console.Write("Choose an option: ");
 
-        bool ascending = Console.ReadLine().ToUpper() == "A";
+        bool ascending = Console.ReadLine() == "1";
 
         items = sortChoice switch
         {
@@ -270,6 +272,9 @@ public class ConsoleUI
 
     private void DisplayItems(List<Item> items)
     {
+        Console.WriteLine($"{"Index",-15} {"Title",-15} {"Amount",-15:c} {"Month",-15}");
+        Console.WriteLine(new string('-', 65));
+
         if (items.Count == 0)
         {
             Console.WriteLine("No items found.");
@@ -286,7 +291,7 @@ public class ConsoleUI
             else
                 Console.ResetColor();
 
-            Console.WriteLine($"{i + 1}. {item}");
+            Console.WriteLine($"{($"{i + 1}."),-15} {item}");
         }
 
         Console.ResetColor();
