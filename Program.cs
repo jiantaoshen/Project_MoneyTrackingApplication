@@ -128,7 +128,8 @@ public class ConsoleUI
 
     private void AddItem()
     {
-        string title = string.IsNullOrWhiteSpace(Prompt("Title")) ? "Unknown" : Prompt("Title");
+        string inputTitle = Prompt("Title");
+        string title = string.IsNullOrWhiteSpace(inputTitle) ? "Unknown" : inputTitle;
 
         string inputAmount = Prompt("Amount");
         decimal amount = 0;
